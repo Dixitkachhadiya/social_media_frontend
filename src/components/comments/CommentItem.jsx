@@ -124,7 +124,7 @@ export default function CommentItem({ comment, onUpdated, onDeleted }) {
                 <Button size="sm" variant="ghost" onClick={() => { setEditing(false); setEditError(null); check.reset(); }} disabled={saving}>
                   Cancel
                 </Button>
-                <Button size="sm" type="submit" loading={saving}>
+                <Button size="sm" type="submit" loading={saving} disabled={check.blocks(draft)} title={check.blocks(draft) ? 'Remove the highlighted words before publishing' : undefined}>
                   Save
                 </Button>
               </div>

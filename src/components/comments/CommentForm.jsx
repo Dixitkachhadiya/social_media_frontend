@@ -68,7 +68,7 @@ export default function CommentForm({ postId, onAdded }) {
           </p>
           <div className="flex items-center gap-3">
             {content && <CharCount value={trimmed} max={LIMITS.comment} />}
-            <Button type="submit" size="sm" loading={sending} disabled={!trimmed}>
+            <Button type="submit" size="sm" loading={sending} disabled={!trimmed || check.blocks(trimmed)} title={check.blocks(trimmed) ? 'Remove the highlighted words before publishing' : undefined}>
               Comment
             </Button>
           </div>

@@ -15,6 +15,7 @@ export const moderationRefusal = (error) => {
  * State for the content-check notice shown under post/comment editors.
  * - check(content): optional "Check" button, POST /api/ai/moderate-content.
  * - showRefusal(error, content): shows the server's refusal when saving was blocked (422).
+ * - blocks(text): true while the editor still holds the refused text (used to disable Publish/Save).
  * The backend checks every save itself; this hook only displays results. It never changes the text.
  */
 export default function useContentCheck() {
@@ -62,5 +63,11 @@ export default function useContentCheck() {
     setChecking(false);
   }, []);
 
-  return { result, checkedText, checking, error, check, showRefusal, reset };
+  // True while `text` is exactly the text the model refused: submitting it again cannot pass
+  const blocks = useCallback(
+    (text) => Boolean(result?.moderation?.blocked) && (text || '').trim() === (checkedText || '').trim(),
+    [result, checkedText],
+  );
+
+  return { result, checkedText, checking, error, check, showRefusal, reset, blocks };
 }

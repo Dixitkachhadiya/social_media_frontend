@@ -13,7 +13,6 @@ export const LIMITS = {
   bio: 500,
   location: 100,
   aiTopic: 200,
-  aiImprove: 2000,
   announcement: 500,
 };
 

@@ -72,7 +72,7 @@ export default function EditPostModal({ post, onClose, onSaved }) {
           <Button variant="secondary" onClick={onClose} disabled={saving}>
             Cancel
           </Button>
-          <Button type="submit" form="edit-post-form" loading={saving} disabled={!hasChanges}>
+          <Button type="submit" form="edit-post-form" loading={saving} disabled={!hasChanges || check.blocks(trimmed)} title={check.blocks(trimmed) ? 'Remove the highlighted words before publishing' : undefined}>
             Save changes
           </Button>
         </>
