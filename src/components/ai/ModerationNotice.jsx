@@ -27,9 +27,11 @@ function Badge({ label, value, className = 'bg-slate-100 text-ink-soft ring-slat
  * Nothing is replaced or published automatically: "Apply suggestion" puts the (edited) suggestion in the
  * editor, and the server checks it again when the user publishes or rechecks.
  *
- * Props: check (useContentCheck), currentText (editor text), onApply(text), onEdit(), onCheckAgain()
+ * Props: check (useContentCheck), currentText (editor text), onApply(text), onEdit(), onCheckAgain(),
+ *        kind ('post' | 'comment': wording only)
  */
-export default function ModerationNotice({ check, currentText, onApply, onEdit, onCheckAgain, compact = false }) {
+export default function ModerationNotice({ check, currentText, onApply, onEdit, onCheckAgain, compact = false, kind = 'post' }) {
+  const noun = kind === 'comment' ? 'comment' : 'text';
   const { result, checkedText, checking } = check;
   const suggestion = result?.moderation?.suggested_text || '';
   const [draft, setDraft] = useState(suggestion);
@@ -81,7 +83,7 @@ export default function ModerationNotice({ check, currentText, onApply, onEdit, 
 
         {checkedText && (
           <div>
-            <p className="mb-1 text-xs font-semibold tracking-wide text-muted uppercase">Your original text</p>
+            <p className="mb-1 text-xs font-semibold tracking-wide text-muted uppercase">Your original {noun}</p>
             <div className="rounded-lg border border-line bg-slate-50 px-3 py-2">
               <HighlightedText text={checkedText} flagged={moderation.flagged_terms} />
             </div>
@@ -107,7 +109,7 @@ export default function ModerationNotice({ check, currentText, onApply, onEdit, 
           <div className="rounded-lg border border-brand-100 bg-brand-50/50 p-3">
             <div className="mb-1.5 flex items-center justify-between gap-2">
               <p className="flex items-center gap-1.5 text-xs font-semibold text-brand-700">
-                <Sparkles className="h-3.5 w-3.5" aria-hidden="true" /> AI-suggested version
+                <Sparkles className="h-3.5 w-3.5" aria-hidden="true" /> AI-suggested {kind === 'comment' ? 'comment' : 'version'}
               </p>
               {!editingSuggestion && (
                 <button type="button" className="link text-xs" onClick={() => setEditingSuggestion(true)}>
@@ -131,7 +133,9 @@ export default function ModerationNotice({ check, currentText, onApply, onEdit, 
                 <Button size="sm" onClick={() => onApply(draft.trim())} disabled={!draft.trim() || applied}>
                   <Wand2 className="h-4 w-4" aria-hidden="true" /> {applied ? 'Applied' : 'Apply suggestion'}
                 </Button>
-                <span className="text-xs text-muted">Replaces the text in your editor. It is checked again before publishing.</span>
+                <span className="text-xs text-muted">
+                  Replaces the {noun} in your editor. It is checked again when you {kind === 'comment' ? 'comment' : 'publish'}.
+                </span>
               </div>
             )}
           </div>
@@ -148,12 +152,12 @@ export default function ModerationNotice({ check, currentText, onApply, onEdit, 
         <div className="flex flex-wrap gap-2">
           {onEdit && (
             <Button size="sm" variant="secondary" onClick={onEdit}>
-              <PenLine className="h-4 w-4" aria-hidden="true" /> Edit my text
+              <PenLine className="h-4 w-4" aria-hidden="true" /> Edit my {noun}
             </Button>
           )}
           {onCheckAgain && (
             <Button size="sm" variant="ghost" onClick={onCheckAgain} loading={checking}>
-              {!checking && <RefreshCw className="h-4 w-4" aria-hidden="true" />} Recheck content
+              {!checking && <RefreshCw className="h-4 w-4" aria-hidden="true" />} Recheck {kind === 'comment' ? 'comment' : 'content'}
             </Button>
           )}
         </div>

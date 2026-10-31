@@ -65,8 +65,9 @@ export function SocketProvider({ children }) {
     // Socket.IO retries on its own after a lost connection (with backoff)
     socket.io.on('reconnect_attempt', () => setStatus('reconnecting'));
 
-    // Fired by the server after authentication, on the first connect and every reconnect:
-    // fetch whatever was missed while offline
+    // Fired by the server after authentication, on the first connect and every reconnect. After a reconnect,
+    // fetch whatever was missed while offline (the first connect needs nothing: the count was just loaded above)
+    let connectedBefore = false;
     socket.on('connected', ({ user_id: socketUserId }) => {
       // The server derives the identity from the JWT; it must be the user this tab displays
       if (socketUserId !== userId) {
@@ -74,8 +75,11 @@ export function SocketProvider({ children }) {
         return;
       }
       setStatus('connected');
-      refreshUnreadCount();
-      publish('reconnected');
+      if (connectedBefore) {
+        refreshUnreadCount();
+        publish('reconnected');
+      }
+      connectedBefore = true;
     });
 
     socket.on('disconnect', (reason) => {

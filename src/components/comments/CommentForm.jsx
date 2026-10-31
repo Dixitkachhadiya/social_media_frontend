@@ -79,9 +79,10 @@ export default function CommentForm({ postId, onAdded }) {
               check={check}
               currentText={content}
               compact
+              kind="comment"
               onEdit={() => textareaRef.current?.focus()}
               onApply={setContent}
-              onCheckAgain={() => trimmed && check.check(trimmed)}
+              onCheckAgain={() => trimmed && check.check(trimmed, 'comment')}
             />
           </div>
         )}

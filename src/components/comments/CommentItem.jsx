@@ -131,7 +131,7 @@ export default function CommentItem({ comment, onUpdated, onDeleted }) {
             </div>
             {check.result && (
               <div className="mt-2">
-                <ModerationNotice check={check} currentText={draft} compact onApply={setDraft} onCheckAgain={() => draft.trim() && check.check(draft.trim())} />
+                <ModerationNotice check={check} currentText={draft} compact kind="comment" onApply={setDraft} onCheckAgain={() => draft.trim() && check.check(draft.trim(), 'comment')} />
               </div>
             )}
           </form>

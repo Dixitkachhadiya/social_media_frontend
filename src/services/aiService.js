@@ -23,5 +23,7 @@ export const aiService = {
     api.post('/ai/summarize', { content, length }, { timeout: AI_TIMEOUT }).then((res) => res.data),
 
   // The same check that runs when a post/comment is saved, with a suggested respectful version
-  moderateContent: (content) => api.post('/ai/moderate-content', { content }, { timeout: AI_TIMEOUT }).then((res) => res.data),
+  // kind ('post' | 'comment') only selects the wording of the message
+  moderateContent: (content, kind) =>
+    api.post('/ai/moderate-content', { content, ...(kind && { kind }) }, { timeout: AI_TIMEOUT }).then((res) => res.data),
 };

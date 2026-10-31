@@ -25,12 +25,12 @@ export default function useContentCheck() {
   const [error, setError] = useState(null);
   const requestId = useRef(0);
 
-  const check = useCallback(async (content) => {
+  const check = useCallback(async (content, kind) => {
     const id = ++requestId.current;
     setChecking(true);
     setError(null);
     try {
-      const res = await aiService.moderateContent(content);
+      const res = await aiService.moderateContent(content, kind);
       if (id !== requestId.current) return null;
       const { message, ...moderation } = res.data;
       setResult({ moderation, message });
