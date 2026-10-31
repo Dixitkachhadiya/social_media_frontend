@@ -2,7 +2,7 @@ import { useCallback, useRef, useState } from 'react';
 import { aiService } from '../services/aiService';
 import { parseApiError } from '../utils/apiError';
 
-// Error code returned by the backend when the local moderation model refuses a post or comment
+// Error code returned by the backend when the AI moderation model refuses a post or comment
 export const MODERATION_FAILED = 'CONTENT_MODERATION_FAILED';
 
 /** Returns { moderation, message } when an API error is a moderation refusal, otherwise null. */

@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Wand2 } from 'lucide-react';
 import { aiService } from '../../services/aiService';
-import { LIMITS } from '../../utils/constants';
+import { AI_TONES, LIMITS } from '../../utils/constants';
 import FormField from '../../components/common/FormField';
 import Button from '../../components/common/Button';
 import CharCount from '../../components/common/CharCount';
@@ -9,9 +9,13 @@ import AIErrorNotice from '../../components/ai/AIErrorNotice';
 import useAIRequest from './useAIRequest';
 import DraftEditor from './DraftEditor';
 
-// POST /api/ai/improve-post { content } -> { original, improved }
+const capitalize = (s) => s[0].toUpperCase() + s.slice(1);
+
+// POST /api/ai/improve-post { content, tone? } -> { original, improved }. The original is never changed;
+// the improved version is shown for review and is moderated when published.
 export default function ImproveTool() {
   const [content, setContent] = useState('');
+  const [tone, setTone] = useState('');
   const [inputError, setInputError] = useState(null);
   const [result, setResult] = useState(null);
   const { loading, error, run } = useAIRequest();
@@ -22,7 +26,7 @@ export default function ImproveTool() {
     if (!trimmed) return setInputError('Paste or write the text you want to improve');
     if (trimmed.length > LIMITS.aiImprove) return setInputError(`Text must be at most ${LIMITS.aiImprove.toLocaleString()} characters`);
     setInputError(null);
-    const res = await run(() => aiService.improvePost(trimmed));
+    const res = await run(() => aiService.improvePost(trimmed, tone || undefined));
     if (res) setResult({ original: res.data.original, improved: res.data.improved });
   };
 
@@ -41,7 +45,18 @@ export default function ImproveTool() {
             className="input resize-y text-[15px] leading-relaxed"
           />
         </FormField>
-        <div className="flex justify-end">
+        <div className="flex flex-wrap items-end justify-between gap-3">
+          <label className="text-sm text-ink-soft">
+            <span className="label">Tone</span>
+            <select value={tone} onChange={(event) => setTone(event.target.value)} className="input w-auto py-1.5">
+              <option value="">Keep my tone</option>
+              {AI_TONES.map((value) => (
+                <option key={value} value={value}>
+                  {capitalize(value)}
+                </option>
+              ))}
+            </select>
+          </label>
           <Button type="submit" loading={loading}>
             {!loading && <Wand2 className="h-4 w-4" aria-hidden="true" />}
             {loading ? 'Improving…' : 'Improve text'}

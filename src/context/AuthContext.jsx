@@ -76,8 +76,10 @@ export function AuthProvider({ children }) {
       loadProfile(me.id);
     } catch (error) {
       if (!isCurrentSession(sessionToken)) return;
-      // Server unreachable: keep the token and let the user retry instead of logging out
-      if (!error.response) {
+      // Only a rejected token (401) or a deactivated account (403) ends the session. A server that is
+      // unreachable, busy or failing (5xx, 429, e.g. on a page refresh) keeps the token: the user retries.
+      const status = error.response?.status;
+      if (status !== 401 && status !== 403) {
         setStatus('unreachable');
         return;
       }

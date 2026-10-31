@@ -3,11 +3,19 @@ import { systemService } from '../../services/systemService';
 import { useSocket } from '../../context/SocketContext';
 
 /**
- * Compact API / database / live-updates indicator built on
- * GET /api/health and GET /api/db-status. `detailed` renders one row per check.
+ * Compact API / database / live-updates indicator built on GET /api/health, GET /api/db-status and the
+ * Socket.IO connection state. `detailed` renders one row per check.
  */
+const LIVE = {
+  connected: ['ok', 'Connected'],
+  connecting: ['checking', 'Connecting…'],
+  reconnecting: ['checking', 'Reconnecting…'],
+  offline: ['down', 'Not connected'],
+};
+
 export default function ConnectionStatus({ detailed = false }) {
-  const { connected } = useSocket();
+  const { status: socketStatus } = useSocket();
+  const [liveState, liveText] = LIVE[socketStatus] || LIVE.offline;
   const [state, setState] = useState({ api: 'checking', db: 'checking', dbName: null });
 
   const check = useCallback(async () => {
@@ -29,10 +37,12 @@ export default function ConnectionStatus({ detailed = false }) {
 
   if (!detailed) {
     const allOk = state.api === 'ok' && state.db === 'ok';
-    const label = state.api === 'checking' ? 'Checking…' : allOk ? 'All systems normal' : 'Service issue';
+    const label =
+      state.api === 'checking' ? 'Checking…' : !allOk ? 'Service issue' : liveState === 'ok' ? 'All systems normal' : `Live updates: ${liveText.toLowerCase()}`;
+    const overall = state.api === 'checking' ? 'checking' : !allOk ? 'down' : liveState;
     return (
-      <span className="inline-flex items-center gap-1.5" title={`API: ${state.api} · Database: ${state.db}`}>
-        <span className={`h-1.5 w-1.5 rounded-full ${dot(state.api === 'checking' ? 'checking' : allOk ? 'ok' : 'down')}`} />
+      <span className="inline-flex items-center gap-1.5" title={`API: ${state.api} · Database: ${state.db} · Live updates: ${socketStatus}`}>
+        <span className={`h-1.5 w-1.5 rounded-full ${dot(overall)}`} />
         {label}
       </span>
     );
@@ -41,7 +51,7 @@ export default function ConnectionStatus({ detailed = false }) {
   const rows = [
     ['API server', state.api, state.api === 'ok' ? 'Responding' : state.api === 'down' ? 'Unreachable' : 'Checking…'],
     ['Database', state.db, state.db === 'ok' ? `Connected${state.dbName ? ` (${state.dbName})` : ''}` : state.db === 'down' ? 'Disconnected' : 'Checking…'],
-    ['Live updates', connected ? 'ok' : 'down', connected ? 'Connected' : 'Not connected'],
+    ['Live updates', liveState, liveText],
   ];
 
   return (

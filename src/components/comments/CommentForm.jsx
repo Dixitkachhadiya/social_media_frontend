@@ -75,7 +75,14 @@ export default function CommentForm({ postId, onAdded }) {
         </div>
         {check.result && (
           <div className="mt-2">
-            <ModerationNotice check={check} currentText={content} compact onEdit={() => textareaRef.current?.focus()} />
+            <ModerationNotice
+              check={check}
+              currentText={content}
+              compact
+              onEdit={() => textareaRef.current?.focus()}
+              onApply={setContent}
+              onCheckAgain={() => trimmed && check.check(trimmed)}
+            />
           </div>
         )}
       </div>

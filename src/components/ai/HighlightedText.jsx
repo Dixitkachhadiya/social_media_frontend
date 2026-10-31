@@ -1,6 +1,6 @@
 const STRONG = new Set(['THREAT', 'HATE_SPEECH', 'HARASSMENT']);
 
-// Renders text with flagged ranges (from the local moderation model's word list) highlighted.
+// Renders text with flagged ranges (words reported by the AI moderation check) highlighted.
 // start/end are UTF-16 offsets supplied by the backend, so they line up with JavaScript strings.
 export default function HighlightedText({ text, flagged = [] }) {
   const ranges = [...flagged]

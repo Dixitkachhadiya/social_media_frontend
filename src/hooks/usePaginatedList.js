@@ -6,6 +6,7 @@ import { errorMessage } from '../utils/apiError';
  * - Reloads from page 1 whenever `deps` change.
  * - Ignores responses from superseded requests and blocks concurrent "load more" calls.
  * - De-duplicates by id when pages shift because of newly created items.
+ * - refresh() re-fetches the pages already shown without a loading state (used for live updates).
  */
 export default function usePaginatedList(fetchPage, { itemsKey, deps = [], enabled = true }) {
   const [items, setItems] = useState([]);
@@ -68,6 +69,28 @@ export default function usePaginatedList(fetchPage, { itemsKey, deps = [], enabl
     }
   }, [pagination, itemsKey]);
 
+  // Silent re-fetch of pages 1..current (live updates): no skeleton, keeps the list on screen on failure
+  const refresh = useCallback(async () => {
+    if (!pagination) return;
+    const id = ++requestId.current;
+    try {
+      let collected = [];
+      let last = null;
+      for (let page = 1; page <= Math.max(1, pagination.page); page += 1) {
+        last = await fetchRef.current(page);
+        if (id !== requestId.current) return;
+        const seen = new Set(collected.map((item) => item.id));
+        collected = [...collected, ...(last[itemsKey] ?? []).filter((item) => !item.id || !seen.has(item.id))];
+        if (last.pagination && page >= last.pagination.total_pages) break;
+      }
+      setItems(collected);
+      setPagination(last?.pagination ? { ...last.pagination, page: Math.max(1, Math.min(pagination.page, last.pagination.total_pages)) } : null);
+      setResponse(last);
+    } catch {
+      /* keep what is shown; the next update or a manual reload will catch up */
+    }
+  }, [pagination, itemsKey]);
+
   // Helpers for optimistic local updates
   const updateItem = useCallback((id, changes) => {
     setItems((current) => current.map((item) => (item.id === id ? { ...item, ...(typeof changes === 'function' ? changes(item) : changes) } : item)));
@@ -99,6 +122,7 @@ export default function usePaginatedList(fetchPage, { itemsKey, deps = [], enabl
     loadingMore,
     loadMore,
     reload: loadFirstPage,
+    refresh,
     updateItem,
     removeItem,
     prependItem,

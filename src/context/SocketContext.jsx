@@ -14,11 +14,15 @@ const SESSION_ERRORS = /expired|invalid token|no longer exists|deactivated|log i
 
 /**
  * One Socket.IO connection per logged-in session (server-assigned rooms, no client joins).
- * Owns the unread notification count and re-broadcasts socket events to subscribed pages.
+ * Owns the unread notification count and re-broadcasts socket events to subscribed pages:
+ * notification, announcement, post:activity (live like/comment counts), reconnected.
+ *
+ * status: 'offline' (signed out) | 'connecting' | 'connected' | 'reconnecting' (lost, retrying automatically)
  */
 export function SocketProvider({ children }) {
   const { token, user, endSession } = useAuth();
-  const [connected, setConnected] = useState(false);
+  const [status, setStatus] = useState('offline');
+  const connected = status === 'connected';
   const [unreadCount, setUnreadCount] = useState(0);
   const [announcement, setAnnouncement] = useState(null);
   const listenersRef = useRef(new Map());
@@ -47,6 +51,7 @@ export function SocketProvider({ children }) {
 
   useEffect(() => {
     if (!token || !userId) {
+      setStatus('offline');
       setUnreadCount(0);
       setAnnouncement(null);
       return undefined;
@@ -56,6 +61,9 @@ export function SocketProvider({ children }) {
     // One socket per session: it authenticates with this tab's token and is closed by the cleanup
     // below on logout or account switch, before the next user's socket is opened.
     const socket = io(SOCKET_URL, { auth: { token } });
+    setStatus('connecting');
+    // Socket.IO retries on its own after a lost connection (with backoff)
+    socket.io.on('reconnect_attempt', () => setStatus('reconnecting'));
 
     // Fired by the server after authentication, on the first connect and every reconnect:
     // fetch whatever was missed while offline
@@ -65,13 +73,14 @@ export function SocketProvider({ children }) {
         socket.disconnect();
         return;
       }
-      setConnected(true);
+      setStatus('connected');
       refreshUnreadCount();
       publish('reconnected');
     });
 
     socket.on('disconnect', (reason) => {
-      setConnected(false);
+      // "io client disconnect" is our own cleanup; anything else is retried by Socket.IO (except a server kick)
+      setStatus(reason === 'io client disconnect' || reason === 'io server disconnect' ? 'offline' : 'reconnecting');
       // The server disconnects deactivated/deleted users; confirm via HTTP so the session ends cleanly
       if (reason === 'io server disconnect') authService.me().catch(() => {});
     });
@@ -94,25 +103,32 @@ export function SocketProvider({ children }) {
 
     socket.on('admin:user-login', (payload) => publish('admin:user-login', payload));
 
+    // Live counts after likes, comments and post changes (ids and counts only; pages refetch content)
+    socket.on('post:activity', (activity) => publish('post:activity', activity));
+
     socket.on('connect_error', (error) => {
-      setConnected(false);
       if (SESSION_ERRORS.test(error.message)) {
         socket.disconnect();
+        setStatus('offline');
         endSession(error.message);
+        return;
       }
+      setStatus(socket.active ? 'reconnecting' : 'offline');
       // Other errors (server down) are retried automatically by Socket.IO
     });
 
     return () => {
       socket.removeAllListeners();
+      socket.io.removeAllListeners();
       socket.disconnect();
-      setConnected(false);
+      setStatus('offline');
     };
   }, [token, userId, refreshUnreadCount, publish, endSession]);
 
   const value = useMemo(
     () => ({
       connected,
+      status,
       unreadCount,
       setUnreadCount,
       refreshUnreadCount,
@@ -120,7 +136,7 @@ export function SocketProvider({ children }) {
       dismissAnnouncement: () => setAnnouncement(null),
       subscribe,
     }),
-    [connected, unreadCount, refreshUnreadCount, announcement, subscribe],
+    [connected, status, unreadCount, refreshUnreadCount, announcement, subscribe],
   );
 
   return <SocketContext.Provider value={value}>{children}</SocketContext.Provider>;

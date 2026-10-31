@@ -8,7 +8,8 @@ import Button from '../../components/common/Button';
 import Alert from '../../components/common/Alert';
 import ModerationNotice from '../../components/ai/ModerationNotice';
 
-// Check any text with the local moderation model (the same check used when posts and comments are saved)
+// Check any text with the AI moderation model (the same check used when posts and comments are saved),
+// with a suggested respectful version that can be applied to the text
 export default function ModerationTool() {
   const [text, setText] = useState('');
   const check = useContentCheck();
@@ -28,7 +29,7 @@ export default function ModerationTool() {
       >
         <FormField
           label="Your text"
-          hint="English, Hindi, Gujarati, Hinglish and romanized Hindi/Gujarati are supported. Checked on our own model; nothing is sent to external AI services."
+          hint="English, Hindi, Gujarati, Hinglish and romanized Hindi/Gujarati are supported. Checked by the AI model on our server; it can take a few seconds."
           aside={<CharCount value={trimmed} max={LIMITS.post} />}
         >
           <textarea
@@ -53,6 +54,7 @@ export default function ModerationTool() {
         check={check}
         currentText={text}
         onEdit={() => textareaRef.current?.focus()}
+        onApply={setText}
         onCheckAgain={() => trimmed && check.check(trimmed)}
       />
     </div>

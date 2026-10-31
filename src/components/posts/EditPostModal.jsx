@@ -105,6 +105,7 @@ export default function EditPostModal({ post, onClose, onSaved }) {
             currentText={content}
             compact
             onEdit={() => textareaRef.current?.focus()}
+            onApply={setContent}
             onCheckAgain={() => trimmed && check.check(trimmed)}
           />
         )}

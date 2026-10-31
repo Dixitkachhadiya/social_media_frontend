@@ -1,9 +1,12 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Link, useLocation, useNavigate, useParams } from 'react-router-dom';
 import { ArrowLeft, FileQuestion, Sparkles } from 'lucide-react';
 import { postService } from '../../services/postService';
 import { aiService } from '../../services/aiService';
 import { parseApiError } from '../../utils/apiError';
+import { postActivityPatch } from '../../utils/liveUpdates';
+import { useAuth } from '../../context/AuthContext';
+import { useSocketEvent } from '../../context/SocketContext';
 import useDocumentTitle from '../../hooks/useDocumentTitle';
 import FeedLayout from '../../components/layout/FeedLayout';
 import PostCard from '../../components/posts/PostCard';
@@ -85,6 +88,33 @@ export default function PostDetailPage() {
   const updatePost = (patch) =>
     setState((s) => ({ ...s, post: { ...s.post, ...(typeof patch === 'function' ? patch(s.post) : patch) } }));
 
+  // Live: counts, edits and deletion by anyone (or in another tab) show up without a refresh.
+  // The server's count is authoritative; a comment this tab added or deleted is counted only once, whether
+  // its live event or the HTTP response arrives first.
+  const { user } = useAuth();
+  const countedComments = useRef(new Set());
+  const countOnce = (key) => {
+    if (countedComments.current.has(key)) return false;
+    countedComments.current.add(key);
+    return true;
+  };
+  const changeCommentCount = (delta, commentId) => {
+    if (countOnce(`${delta > 0 ? 'comment-added' : 'comment-deleted'}:${commentId}`)) {
+      updatePost((post) => ({ comments_count: Math.max(0, post.comments_count + delta) }));
+    }
+  };
+  useSocketEvent('post:activity', (activity) => {
+    if (state.status !== 'ready' || activity.post_id !== state.post.id) return;
+    if (activity.comment_id) countOnce(`${activity.type}:${activity.comment_id}`);
+    if (activity.type === 'post-deleted') {
+      setState({ status: 'missing', post: null, error: null });
+    } else if (activity.type === 'post-updated') {
+      postService.get(activity.post_id).then(({ post }) => updatePost(post)).catch(() => {});
+    } else {
+      updatePost(postActivityPatch(activity, user?.id));
+    }
+  });
+
   return (
     <FeedLayout>
       <div className="space-y-4">
@@ -119,7 +149,7 @@ export default function PostDetailPage() {
             <DiscussionSummary postId={state.post.id} commentsCount={state.post.comments_count} />
             <CommentSection
               postId={state.post.id}
-              onCountChange={(delta) => updatePost((post) => ({ comments_count: Math.max(0, post.comments_count + delta) }))}
+              onCountChange={changeCommentCount}
             />
           </>
         )}

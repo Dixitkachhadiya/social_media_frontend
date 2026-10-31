@@ -18,7 +18,7 @@ const PREVIEW_LIMIT = 6;
  */
 export default function NotificationBell() {
   const navigate = useNavigate();
-  const { unreadCount, setUnreadCount, connected } = useSocket();
+  const { unreadCount, setUnreadCount, connected, status: socketStatus } = useSocket();
   const [open, setOpen] = useState(false);
   const [state, setState] = useState({ status: 'idle', items: [], error: null });
   const [markingAll, setMarkingAll] = useState(false);
@@ -97,7 +97,7 @@ export default function NotificationBell() {
         className={`relative inline-flex h-9 w-9 items-center justify-center rounded-lg transition-colors hover:bg-slate-100 hover:text-ink
           ${open ? 'bg-slate-100 text-ink' : 'text-ink-soft'}`}
         aria-label={unreadCount ? `Notifications, ${unreadCount} unread` : 'Notifications'}
-        title={connected ? 'Notifications (live)' : 'Notifications (reconnecting…)'}
+        title={connected ? 'Notifications (live)' : socketStatus === 'offline' ? 'Notifications (live updates off)' : 'Notifications (reconnecting…)'}
       >
         <Bell className="h-5 w-5" aria-hidden="true" />
         {unreadCount > 0 && (

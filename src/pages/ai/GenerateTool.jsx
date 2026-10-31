@@ -11,9 +11,16 @@ import DraftEditor from './DraftEditor';
 
 const capitalize = (s) => s[0].toUpperCase() + s.slice(1);
 
-// POST /api/ai/generate-post { topic, tone }
+const MAX_DESCRIPTION = 500;
+const MAX_KEYWORDS = 10;
+const parseKeywords = (value) => value.split(',').map((k) => k.trim()).filter(Boolean);
+
+// POST /api/ai/generate-post { topic, tone, description?, keywords? }. The draft is editable and is only
+// published through the normal composer, where it is moderated like any other post.
 export default function GenerateTool() {
   const [topic, setTopic] = useState('');
+  const [description, setDescription] = useState('');
+  const [keywords, setKeywords] = useState('');
   const [tone, setTone] = useState('professional');
   const [topicError, setTopicError] = useState(null);
   const [draft, setDraft] = useState(null);
@@ -24,8 +31,13 @@ export default function GenerateTool() {
     const trimmed = topic.trim();
     if (!trimmed) return setTopicError('Enter a topic to write about');
     if (trimmed.length > LIMITS.aiTopic) return setTopicError(`Topic must be at most ${LIMITS.aiTopic} characters`);
+    if (description.trim().length > MAX_DESCRIPTION) return setTopicError(`Description must be at most ${MAX_DESCRIPTION} characters`);
+    const keywordList = parseKeywords(keywords);
+    if (keywordList.length > MAX_KEYWORDS || keywordList.some((k) => k.length > 40)) {
+      return setTopicError(`Use at most ${MAX_KEYWORDS} keywords of up to 40 characters`);
+    }
     setTopicError(null);
-    const res = await run(() => aiService.generatePost({ topic: trimmed, tone }));
+    const res = await run(() => aiService.generatePost({ topic: trimmed, tone, description: description.trim(), keywords: keywordList }));
     if (res) setDraft(res.data.content);
   };
 
@@ -41,6 +53,20 @@ export default function GenerateTool() {
             }}
             placeholder="e.g. Lessons from shipping my first side project"
           />
+        </FormField>
+
+        <FormField label="Short description (optional)" aside={<CharCount value={description.trim()} max={MAX_DESCRIPTION} />}>
+          <textarea
+            rows={2}
+            value={description}
+            onChange={(event) => setDescription(event.target.value)}
+            placeholder="What should the post say? e.g. what I learned and one tip for beginners"
+            className="input resize-y"
+          />
+        </FormField>
+
+        <FormField label="Keywords (optional)" hint={`Comma-separated, up to ${MAX_KEYWORDS}.`}>
+          <input value={keywords} onChange={(event) => setKeywords(event.target.value)} placeholder="e.g. side project, React, deadlines" />
         </FormField>
 
         <fieldset>

@@ -1,9 +1,10 @@
 import { useEffect, useRef, useState } from 'react';
-import { Eye, FileText, ImagePlus, PenLine, ShieldCheck, X } from 'lucide-react';
+import { Eye, FileText, ImagePlus, PenLine, ShieldCheck, Sparkles, X } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useAuth } from '../../context/AuthContext';
 import { postService } from '../../services/postService';
-import { parseApiError } from '../../utils/apiError';
+import { aiService } from '../../services/aiService';
+import { errorMessage, parseApiError } from '../../utils/apiError';
 import { LIMITS } from '../../utils/constants';
 import { displayName } from '../../utils/format';
 import Avatar from '../common/Avatar';
@@ -17,10 +18,11 @@ import ModerationNotice from '../ai/ModerationNotice';
 import SummaryPanel from '../ai/SummaryPanel';
 
 /**
- * POST /posts composer with character count, optional image URL, preview, Summarize (a suggestion the
- * user must accept) and Check content (local moderation model). The backend moderates every post before
- * saving; a refusal is shown here without changing the user's text, and Publish stays disabled until
- * the refused text is edited.
+ * POST /posts composer with character count, optional image URL, preview, Improve and Summarize
+ * (suggestions the user must accept), and Check content (AI moderation). The backend moderates every
+ * post before saving. A refusal shows the words to review and an AI-suggested version the user can edit
+ * and apply; the text is never changed without the user's click, and Publish stays disabled while the
+ * editor still holds the refused text.
  */
 export default function PostComposer({ onCreated, initialContent = '', initialImageUrl = '', expanded: startExpanded = false, autoFocus = false }) {
   const { user, profile } = useAuth();
@@ -32,6 +34,8 @@ export default function PostComposer({ onCreated, initialContent = '', initialIm
   const [errors, setErrors] = useState({});
   const [formError, setFormError] = useState(null);
   const [publishing, setPublishing] = useState(false);
+  const [improving, setImproving] = useState(false);
+  const [suggestion, setSuggestion] = useState(null);
   const [showSummary, setShowSummary] = useState(false);
   const check = useContentCheck();
   const textareaRef = useRef(null);
@@ -56,6 +60,7 @@ export default function PostComposer({ onCreated, initialContent = '', initialIm
     setImageUrl('');
     setShowImage(false);
     setPreviewing(false);
+    setSuggestion(null);
     setErrors({});
     setFormError(null);
     setShowSummary(false);
@@ -73,7 +78,7 @@ export default function PostComposer({ onCreated, initialContent = '', initialIm
   };
 
   /**
-   * Publishing: the backend checks every post with the local moderation model before saving it.
+   * Publishing: the backend checks every post with the AI moderation model before saving it.
    * A refusal (422) shows the reason and highlighted words; the text stays in the editor for the
    * user to fix and submit again. Nothing is changed automatically.
    */
@@ -105,6 +110,22 @@ export default function PostComposer({ onCreated, initialContent = '', initialIm
   const editText = () => {
     setPreviewing(false);
     requestAnimationFrame(() => textareaRef.current?.focus());
+  };
+
+  const improve = async () => {
+    if (!trimmed) return setErrors({ content: 'Write something first, then let AI polish it' });
+    if (trimmed.length > LIMITS.aiImprove) {
+      return toast.error(`AI improvement works on up to ${LIMITS.aiImprove.toLocaleString()} characters`);
+    }
+    setImproving(true);
+    try {
+      const res = await aiService.improvePost(trimmed);
+      setSuggestion(res.data.improved);
+    } catch (error) {
+      toast.error(errorMessage(error), { duration: 6000 });
+    } finally {
+      setImproving(false);
+    }
   };
 
   if (!expanded) {
@@ -172,6 +193,23 @@ export default function PostComposer({ onCreated, initialContent = '', initialIm
         </div>
       )}
 
+      {suggestion && !previewing && (
+        <div className="mt-4 rounded-xl border border-brand-100 bg-brand-50/60 p-4">
+          <p className="flex items-center gap-1.5 text-xs font-semibold text-brand-700">
+            <Sparkles className="h-3.5 w-3.5" aria-hidden="true" /> AI suggestion: review before using it
+          </p>
+          <p className="mt-2 text-sm leading-relaxed whitespace-pre-wrap text-ink">{suggestion}</p>
+          <div className="mt-3 flex gap-2">
+            <Button size="sm" onClick={() => { setContent(suggestion); setSuggestion(null); }}>
+              Use this version
+            </Button>
+            <Button size="sm" variant="ghost" onClick={() => setSuggestion(null)}>
+              Keep mine
+            </Button>
+          </div>
+        </div>
+      )}
+
       {showSummary && !previewing && (
         <div className="mt-4 rounded-xl border border-line p-4">
           <p className="mb-3 flex items-center gap-1.5 text-xs font-semibold tracking-wide text-muted uppercase">
@@ -196,7 +234,16 @@ export default function PostComposer({ onCreated, initialContent = '', initialIm
       )}
       {check.result && (
         <div className="mt-4">
-          <ModerationNotice check={check} currentText={content} onEdit={editText} onCheckAgain={() => trimmed && check.check(trimmed)} />
+          <ModerationNotice
+            check={check}
+            currentText={content}
+            onEdit={editText}
+            onApply={(text) => {
+              setContent(text);
+              setErrors((e) => ({ ...e, content: null }));
+            }}
+            onCheckAgain={() => trimmed && check.check(trimmed)}
+          />
         </div>
       )}
 
@@ -222,7 +269,11 @@ export default function PostComposer({ onCreated, initialContent = '', initialIm
           <Button variant="ghost" size="icon" onClick={() => setShowImage((v) => !v)} aria-pressed={showImage} aria-label="Attach image URL" title="Attach image URL" disabled={previewing}>
             <ImagePlus className="h-[18px] w-[18px]" />
           </Button>
-          <Button variant="ghost" size="sm" onClick={() => setShowSummary((v) => !v)} aria-pressed={showSummary} disabled={previewing} title="Summarize (key sentences from your text)">
+          <Button variant="ghost" size="sm" onClick={improve} loading={improving} disabled={previewing} title="Improve wording with AI">
+            {!improving && <Sparkles className="h-4 w-4 text-brand-600" aria-hidden="true" />}
+            <span className="hidden sm:inline">Improve</span>
+          </Button>
+          <Button variant="ghost" size="sm" onClick={() => setShowSummary((v) => !v)} aria-pressed={showSummary} disabled={previewing} title="Summarize with AI">
             <FileText className="h-4 w-4 text-brand-600" aria-hidden="true" />
             <span className="hidden sm:inline">Summarize</span>
           </Button>
@@ -237,6 +288,7 @@ export default function PostComposer({ onCreated, initialContent = '', initialIm
         </div>
 
         <div className="ml-auto flex items-center gap-3">
+          {publishing && <span className="text-xs text-muted" role="status">Checking content with AI…</span>}
           <CharCount value={trimmed} max={LIMITS.post} />
           {!startExpanded && (
             <Button variant="ghost" size="icon-sm" onClick={reset} aria-label="Discard draft" title="Discard" disabled={publishing}>
@@ -247,7 +299,7 @@ export default function PostComposer({ onCreated, initialContent = '', initialIm
             type="submit"
             loading={publishing}
             disabled={!trimmed || trimmed.length > LIMITS.post || check.blocks(trimmed)}
-            title={check.blocks(trimmed) ? 'Remove the highlighted words before publishing' : undefined}
+            title={check.blocks(trimmed) ? 'Remove the highlighted words or apply the suggestion before publishing' : undefined}
           >
             Publish
           </Button>

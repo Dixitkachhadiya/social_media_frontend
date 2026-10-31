@@ -12,7 +12,7 @@ const TOOLS = [
   { value: 'generate', label: 'Generate', icon: PenLine, description: 'Turn a topic into a ready-to-edit post.' },
   { value: 'improve', label: 'Improve', icon: Wand2, description: 'Fix grammar and readability while keeping your meaning.' },
   { value: 'summarize', label: 'Summarize', icon: FileText, description: 'Shorten your text, or get the gist of a post and its comments.' },
-  { value: 'moderate', label: 'Check content', icon: ShieldCheck, description: 'Check text for vulgar, abusive, hateful or threatening language with our own model.' },
+  { value: 'moderate', label: 'Check content', icon: ShieldCheck, description: 'Check text for vulgar, abusive, hateful or threatening language, and get a respectful alternative.' },
 ];
 
 const SUMMARY_MODES = [
@@ -50,8 +50,8 @@ export default function AIAssistantPage() {
       {tab === 'moderate' && <ModerationTool />}
 
       <p className="text-center text-xs text-muted">
-        AI can make mistakes. Read the text before publishing. Content checks run on our own locally hosted model (no external AI service);
-        it was trained on synthetic examples and can be wrong. Every post and comment is checked again when saved.
+        AI can make mistakes. Read the text before publishing. All AI features run on the Ollama model configured on our server;
+        every post and comment is checked again when it is saved.
       </p>
     </div>
   );

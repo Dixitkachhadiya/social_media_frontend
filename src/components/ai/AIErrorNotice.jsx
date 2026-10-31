@@ -3,7 +3,7 @@ import Alert from '../common/Alert';
 
 /**
  * Explains AI failures from the backend:
- * 429 quota/rate limit (with Retry-After), 503 not configured/unavailable, 504 timeout, 502 empty response.
+ * 429 rate limit (with Retry-After), 422 text too short, 503 model unavailable/busy, 504 timeout, 502 empty response.
  */
 export default function AIErrorNotice({ error, className = '' }) {
   const [secondsLeft, setSecondsLeft] = useState(error?.retryAfter ?? 0);
@@ -29,10 +29,9 @@ export default function AIErrorNotice({ error, className = '' }) {
     title = 'AI limit reached';
     tone = 'warning';
     detail = `${message}${secondsLeft > 0 ? ` You can try again in ${secondsLeft}s.` : ' You can try again now.'}`;
-  } else if (status === 503 && /not configured/i.test(message)) {
-    title = 'AI is not set up on the server';
+  } else if (status === 422) {
+    title = "This text can't be processed";
     tone = 'warning';
-    detail = 'The server administrator needs to configure the AI provider before these tools can be used.';
   } else if (status === 503) {
     title = 'AI is temporarily unavailable';
   } else if (status === 504) {

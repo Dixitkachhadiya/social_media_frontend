@@ -1,5 +1,7 @@
 import { MessageCircle } from 'lucide-react';
 import { commentService } from '../../services/commentService';
+import { useSocketEvent } from '../../context/SocketContext';
+import { COMMENT_ACTIVITY } from '../../utils/liveUpdates';
 import usePaginatedList from '../../hooks/usePaginatedList';
 import CommentForm from './CommentForm';
 import CommentItem from './CommentItem';
@@ -18,6 +20,18 @@ export default function CommentSection({ postId, onCountChange }) {
   });
   const total = comments.pagination?.total ?? comments.items.length;
 
+  // Live: comments added, edited or deleted by anyone (or in another tab) appear without a refresh
+  useSocketEvent('post:activity', (activity) => {
+    if (activity.post_id !== postId || !COMMENT_ACTIVITY.has(activity.type) || comments.status !== 'ready') return;
+    const shown = comments.items.some((c) => c.id === activity.comment_id);
+    if (activity.type === 'comment-deleted') {
+      if (shown) comments.removeItem(activity.comment_id);
+    } else if (activity.type === 'comment-updated' || !shown) {
+      comments.refresh();
+    }
+  });
+  useSocketEvent('reconnected', () => comments.status === 'ready' && comments.refresh());
+
   return (
     <section id="comments" className="card scroll-mt-20 p-4 sm:p-5" aria-labelledby="comments-heading">
       <h2 id="comments-heading" className="mb-4 text-[15px] font-semibold text-ink">
@@ -28,7 +42,7 @@ export default function CommentSection({ postId, onCountChange }) {
         postId={postId}
         onAdded={(comment) => {
           comments.appendItem(comment);
-          onCountChange?.(1);
+          onCountChange?.(1, comment.id);
         }}
       />
 
@@ -46,7 +60,7 @@ export default function CommentSection({ postId, onCountChange }) {
               onUpdated={(updated) => comments.updateItem(comment.id, updated)}
               onDeleted={() => {
                 comments.removeItem(comment.id);
-                onCountChange?.(-1);
+                onCountChange?.(-1, comment.id);
               }}
             />
           ))}

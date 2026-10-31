@@ -1,4 +1,5 @@
 import api from './api';
+import { AI_TIMEOUT } from '../utils/constants';
 
 const postBody = ({ content, image_url }) => {
   const body = {};
@@ -17,8 +18,9 @@ export const postService = {
   create: ({ content, image_url }) => {
     const body = { content };
     if (image_url) body.image_url = image_url;
-    return api.post('/posts', body).then((res) => res.data);
+    // Moderated by the AI model before saving
+    return api.post('/posts', body, { timeout: AI_TIMEOUT }).then((res) => res.data);
   },
-  update: (id, changes) => api.put(`/posts/${id}`, postBody(changes)).then((res) => res.data),
+  update: (id, changes) => api.put(`/posts/${id}`, postBody(changes), { timeout: AI_TIMEOUT }).then((res) => res.data),
   remove: (id) => api.delete(`/posts/${id}`).then((res) => res.data),
 };
