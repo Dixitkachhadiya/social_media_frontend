@@ -45,7 +45,7 @@ export default function VerifyEmailPage() {
         return;
       }
       startResend(data.resend_after_seconds ?? 60);
-      startExpiry(data.expires_in_seconds ?? 600);
+      startExpiry(data.expires_in_seconds ?? 300);
       setNotice(data.message);
       setOtp('');
       setStep('code');
@@ -122,7 +122,7 @@ export default function VerifyEmailPage() {
               <ShieldCheck className="h-5 w-5" aria-hidden="true" />
             </span>
             <p className="text-sm text-ink-soft">
-              We'll email a 6-digit code to <span className="font-medium text-ink">{masked}</span>. It's valid for 10 minutes.
+              We'll email a 6-digit code to <span className="font-medium text-ink">{masked}</span>. It's valid for 5 minutes.
             </p>
           </div>
           {error && (

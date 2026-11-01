@@ -80,7 +80,7 @@ export default function SettingsPage() {
       </Section>
 
       {!user.is_email_verified && (
-        <Section title="Verify your email" description="We'll email you a 6-digit code. Codes are valid for 10 minutes.">
+        <Section title="Verify your email" description="We'll email you a 6-digit code. Codes are valid for 5 minutes.">
           <Button variant="secondary" onClick={() => navigate('/verify-email')}>
             Verify email
           </Button>

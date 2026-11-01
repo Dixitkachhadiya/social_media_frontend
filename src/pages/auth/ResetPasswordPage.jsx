@@ -59,7 +59,7 @@ function CodeStep({ email, initialNotice, initialExpiresIn, initialResendAfter, 
       const data = await authService.forgotPassword(email);
       setNotice(data.message);
       startResend(data.resend_after_seconds ?? 60);
-      startExpiry(data.expires_in_seconds ?? 600);
+      startExpiry(data.expires_in_seconds ?? 300);
       setOtp('');
     } catch (err) {
       setError(parseApiError(err).message);
@@ -114,7 +114,7 @@ function PasswordStep({ resetToken, onDone, onExpired }) {
       const data = await authService.resetPassword({ token: resetToken, password });
       onDone(data.message);
     } catch (err) {
-      // The reset session is single-use and lasts 10 minutes
+      // The reset session is single-use and lasts 5 minutes
       if (parseApiError(err).status === 400 && /session/i.test(parseApiError(err).message)) onExpired();
       throw err;
     }
